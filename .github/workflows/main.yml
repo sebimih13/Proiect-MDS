@@ -14,6 +14,12 @@ env:
   SOLUTION_FILE_PATH: 'Apocalypse.sln'
   ZIP_NAME: 'windows-x64'
 
+defaults:
+  run:
+    # Use a bash shell, so we can use the same syntax for environment variable
+    # access regardless of the host operating system
+    shell: bash
+
 jobs:
   windows:
     runs-on: windows-latest
@@ -38,28 +44,28 @@ jobs:
     
     - name: Setup
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: cmd /c "generate_project.bat"
+      run: generate_project.bat
     
     - name: Build
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: MSBuild ${{env.SOLUTION_FILE_PATH}} /m /p:Configuration=${{matrix.build-configuration}} /p:Platform=${{matrix.build-platform}}
     
-    - name: Move artifacts to Release Folder
+    - name: Copy Artifacts
       if: startsWith(github.ref, 'refs/tags/') && matrix.build-configuration == 'Release'
       run: |
         mkdir ${{ env.ZIP_NAME }}
-        copy bin/Release-windows-x86_64/Apocalypse/*.exe ${{ env.ZIP_NAME }}
+        cp bin/Release-windows-x86_64/Apocalypse/*.exe ${{ env.ZIP_NAME }}
         mkdir -p "${{ env.ZIP_NAME }}\textures"
-        xcopy Apocalypse\textures "${{ env.ZIP_NAME }}\textures" /E /H
+        cp Apocalypse\textures "${{ env.ZIP_NAME }}\textures"
         dir /a ${{ env.ZIP_NAME }}
     
     - name: Set Tag Name
       if: startsWith(github.ref, 'refs/tags/') && matrix.build-configuration == 'Release'
-      run: echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> ${GITHUB_ENV}
+      run: echo "TAG_NAME=${GITHUB_REF#'refs/tags/'}" >> ${GITHUB_ENV}
     
     - name: Add tag to folder name
       if: startsWith(github.ref, 'refs/tags/') && matrix.build-configuration == 'Release'
-      run: move ${{ env.ZIP_NAME }} ${{ env.ZIP_NAME }}_${{ env.TAG_NAME }}
+      run: mv ${{ env.ZIP_NAME }} ${{ env.ZIP_NAME }}_${{ env.TAG_NAME }}
     
     - name: Archive Release
       uses: thedoctor0/zip-release@master
