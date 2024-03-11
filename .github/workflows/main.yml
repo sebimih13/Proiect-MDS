@@ -44,7 +44,7 @@ jobs:
     
     - name: Setup
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: generate_project.bat
+      run: cmd /c "generate_project.bat"
     
     - name: Build
       working-directory: ${{env.GITHUB_WORKSPACE}}
@@ -54,9 +54,9 @@ jobs:
       if: startsWith(github.ref, 'refs/tags/') && matrix.build-configuration == 'Release'
       run: |
         mkdir ${{ env.ZIP_NAME }}
-        cp bin/Release-windows-x86_64/Apocalypse/*.exe ${{ env.ZIP_NAME }}
+        copy bin/Release-windows-x86_64/Apocalypse/*.exe ${{ env.ZIP_NAME }}
         mkdir -p "${{ env.ZIP_NAME }}\textures"
-        cp Apocalypse\textures "${{ env.ZIP_NAME }}\textures"
+        xcopy Apocalypse\textures "${{ env.ZIP_NAME }}\textures" /E /H
         dir /a ${{ env.ZIP_NAME }}
     
     - name: Set Tag Name
