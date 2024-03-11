@@ -6,7 +6,7 @@ permissions:
   contents: read
 
 env:
-  SOLUTION_FILE_PATH: 'Apocalypse'
+  SOLUTION_FILE_PATH: 'Apocalypse.sln'
 
 jobs:
   windows:
@@ -14,13 +14,14 @@ jobs:
     strategy:
       matrix:
         build-configuration: [Debug, Release]
+        build-platform: [x64]
     steps:
     - name: Clone Git Repository
       uses: actions/checkout@v4
       with: 
         repository: 'sebimih13/Proiect-MDS' # TODO: change
         submodules: true
-    - name: Add msbuild to PATH
+    - name: Add MSBuild to PATH
       uses: microsoft/setup-msbuild@v2
       with:
         msbuild-architecture: x64
@@ -29,5 +30,5 @@ jobs:
       run: cmd /c "generate_project.bat"
     - name: Build
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: msbuild ${{env.SOLUTION_FILE_PATH}} /m /p:Configuration=${{matrix.build-configuration}} /p:Platform=x64
+      run: MSBuild ${{env.SOLUTION_FILE_PATH}} /m /p:Configuration=${{matrix.build-configuration}} /p:Platform=${{matrix.build-platform}}
 
