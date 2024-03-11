@@ -12,5 +12,5 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-    - name: Generate the project
-      run: generate_project.bat
+    - name: dir
+      run: dir
