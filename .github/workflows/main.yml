@@ -1,16 +1,33 @@
 name: CI Workflow
 
-on: [push]
+on: [push, pull_request]
+
+permissions:
+  contents: read
+
+env:
+  SOLUTION_FILE_PATH: 'Apocalypse'
 
 jobs:
   windows:
     runs-on: windows-latest
     strategy:
       matrix:
-        config: [debug, release]
-        platform: [x64]
+        build-configuration: [Debug, Release]
     steps:
-    - name: Checkout
+    - name: Clone Git Repository
       uses: actions/checkout@v4
-    - name: dir
-      run: dir
+      with: 
+        repository: 'sebimih13/Proiect-MDS' # TODO: change
+        submodules: true
+    - name: Add msbuild to PATH
+      uses: microsoft/setup-msbuild@v2
+      with:
+        msbuild-architecture: x64
+    - name: Setup
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: generate_project.bat
+    - name: Build
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: msbuild ${{env.SOLUTION_FILE_PATH}} /m /p:Configuration=${{matrix.build-configuration}}
+
