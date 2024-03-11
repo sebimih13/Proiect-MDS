@@ -26,7 +26,7 @@ jobs:
         msbuild-architecture: x64
     - name: Setup
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: generate_project.bat
+      run: cmd /c "generate_project.bat"
     - name: Build
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: msbuild ${{env.SOLUTION_FILE_PATH}} /m /p:Configuration=${{matrix.build-configuration}}
