@@ -8,7 +8,7 @@ on:
     branches: ['*']
 
 permissions:
-  contents: read
+  contents: write
 
 env:
   SOLUTION_FILE_PATH: 'Apocalypse.sln'
