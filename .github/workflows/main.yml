@@ -44,7 +44,7 @@ jobs:
     
     - name: Setup
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: cmd /c "generate_project.bat"
+      run: ./generate_project.bat
     
     - name: Build
       working-directory: ${{env.GITHUB_WORKSPACE}}
