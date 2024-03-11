@@ -12,7 +12,5 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-    - name: Change the current working directory
-      run: cd Proiect-MDS
     - name: Generate the project
       run: generate_project.bat
