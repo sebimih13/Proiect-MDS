@@ -27,46 +27,29 @@ jobs:
       uses: actions/checkout@v4
       with: 
         repository: 'sebimih13/Proiect-MDS' # TODO: change
-    #     submodules: true
-    # - name: Add MSBuild to PATH
-    #   uses: microsoft/setup-msbuild@v2
-    #   with:
-    #     msbuild-architecture: x64
-    # - name: Setup
-    #   working-directory: ${{env.GITHUB_WORKSPACE}}
-    #   run: cmd /c "generate_project.bat"
-    # - name: Build
-    #   working-directory: ${{env.GITHUB_WORKSPACE}}
-    #   run: MSBuild ${{env.SOLUTION_FILE_PATH}} /m /p:Configuration=${{matrix.build-configuration}} /p:Platform=${{matrix.build-platform}}
-
-
-
-# TODO: move textures cp Apocalypse/textures ${{ env.ZIP_NAME }}
-
-    - name: Move artifacts to release folder
+        submodules: true
+    - name: Add MSBuild to PATH
+      uses: microsoft/setup-msbuild@v2
+      with:
+        msbuild-architecture: x64
+    - name: Setup
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: cmd /c "generate_project.bat"
+    - name: Build
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: MSBuild ${{env.SOLUTION_FILE_PATH}} /m /p:Configuration=${{matrix.build-configuration}} /p:Platform=${{matrix.build-platform}}
+    - name: Move artifacts to Release Folder
       run: |
         mkdir ${{ env.ZIP_NAME }}
-        move vendor/premake5/* ${{ env.ZIP_NAME }}
+        copy bin/Release-windows-x86_64/Apocalypse/* ${{ env.ZIP_NAME }}
+        Xcopy Apocalypse/textures ${{ env.ZIP_NAME }}
         dir /a ${{ env.ZIP_NAME }}
-
-    - name: Set TIMESTAMP
-      run: echo "TIMESTAMP=$(date +%Y-%m-%d-%H-%M-%S)" >> ${GITHUB_ENV}
-
-    - name: Upload Artifacts
-      uses: actions/upload-artifact@v3
-      with:
-        name: ${{ env.ZIP_NAME }}_${{ env.TIMESTAMP }}
-        path: ${{ env.ZIP_NAME }}
-        retention-days: 20
-
     - name: Set Tag Name
       if: startsWith(github.ref, 'refs/tags/')
       run: echo "TAG_NAME=${GITHUB_REF#'refs/tags/'}" >> ${GITHUB_ENV}
-
     - name: Add tag to folder name
       if: startsWith(github.ref, 'refs/tags/')
       run: move ${{ env.ZIP_NAME }} ${{ env.ZIP_NAME }}_${{ env.TAG_NAME }}
-
     - name: Archive Release
       uses: thedoctor0/zip-release@master
       if: startsWith(github.ref, 'refs/tags/')
@@ -74,7 +57,6 @@ jobs:
         type: 'zip'
         path: ${{ env.ZIP_NAME }}_${{ env.TAG_NAME }}
         filename: ${{ env.ZIP_NAME }}_${{ env.TAG_NAME }}.zip
-
     - name: Release
       uses: softprops/action-gh-release@v1
       if: startsWith(github.ref, 'refs/tags/')
