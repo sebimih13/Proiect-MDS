@@ -39,11 +39,10 @@ jobs:
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: MSBuild ${{env.SOLUTION_FILE_PATH}} /m /p:Configuration=${{matrix.build-configuration}} /p:Platform=${{matrix.build-platform}}
 
-
-    # TODO: test
+    
     - name: Set Tag Name
       if: startsWith(github.ref, 'refs/tags/')
-      run: echo "TAG_NAME=${GITHUB_REF#'refs/tags/'}" >> ${GITHUB_ENV}
+      run: cmd /c "echo "TAG_NAME=${GITHUB_REF#'refs/tags/'}" >> ${GITHUB_ENV}"
 
     - name: Add tag to folder name
       if: startsWith(github.ref, 'refs/tags/')
