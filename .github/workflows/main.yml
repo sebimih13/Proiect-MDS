@@ -13,6 +13,6 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
     - name: Change the current working directory
-      run: cd Proiect-Metode-de-Dezvoltare-Software-MDS
+      run: cd Proiect-MDS
     - name: Generate the project
       run: generate_project.bat
