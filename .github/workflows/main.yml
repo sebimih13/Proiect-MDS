@@ -1,0 +1,18 @@
+name: CI Workflow
+
+on: [push]
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        config: [debug, release]
+        platform: [x64]
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: Change the current working directory
+      run: cd Proiect-Metode-de-Dezvoltare-Software-MDS
+    - name: Generate the project
+      run: generate_project.bat
