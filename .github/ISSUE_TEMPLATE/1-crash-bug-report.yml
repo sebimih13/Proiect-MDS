@@ -1,7 +1,7 @@
 name: Crash Report
 description: Use this template to report any crashes encountered while running the game.
 title: "Enter a title here"
-projects: ["octo-org/1", "octo-org/44", "sebimih13/projects/3"]
+projects: ["users/sebimih13/projects/3/views/1"]
 labels: crash
 body:
   - type: markdown
