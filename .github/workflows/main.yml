@@ -16,15 +16,15 @@ env:
   SOLUTION_FILE_PATH: 'Apocalypse.sln'
   ZIP_NAME: 'windows-x64'
 
+strategy:
+  fail-fast: false
+  matrix:
+    build-configuration: [Debug, Release]
+    build-platform: [x64]
+
 jobs:
-  windows:
+  Windows_Build:
     runs-on: windows-latest
-    
-    strategy:
-      fail-fast: false
-      matrix:
-        build-configuration: [Debug, Release]
-        build-platform: [x64]
     
     steps:
     - name: Clone Git Repository
@@ -37,12 +37,6 @@ jobs:
       uses: microsoft/setup-msbuild@v2
       with:
         msbuild-architecture: x64
-
-    - name: Add VSTest.console.exe to PATH
-      uses: darenm/Setup-VSTest@v1.2
-
-    - name: Install 7zip
-      run: choco install 7zip.install
     
     - name: Setup
       working-directory: ${{env.GITHUB_WORKSPACE}}
@@ -52,6 +46,18 @@ jobs:
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: MSBuild ${{env.SOLUTION_FILE_PATH}} /m /p:Configuration=${{matrix.build-configuration}} /p:Platform=${{matrix.build-platform}}
     
+  Windows_Unit_Tests:
+    runs-on: windows-latest
+    needs: Windows_Build
+    if: ${{ always() && needs.Windows_Build.result == 'success' }}
+
+    steps:
+    - name: Add VSTest.console.exe to PATH
+      uses: darenm/Setup-VSTest@v1.2
+
+    - name: Install 7zip
+      run: choco install 7zip.install
+
     - name: Install Mesa
       working-directory: ${{env.GITHUB_WORKSPACE}}bin\${{matrix.build-configuration}}-windows-x86_64\Unit-Tests
       shell: cmd
@@ -73,6 +79,12 @@ jobs:
         files: TestResults\results-${{matrix.build-configuration}}.trx
         check_name: 'Test Results ${{matrix.build-configuration}}'
 
+  Windows Release:
+    runs-on: windows-latest
+    needs: Windows_Unit_Tests
+    if: ${{ startsWith(github.ref, 'refs/tags/') && matrix.build-configuration == 'Release' && (needs.Windows_Unit_Tests.result == 'success' }}
+
+    steps:
     - name: Move artifacts to Release Folder
       if: startsWith(github.ref, 'refs/tags/') && matrix.build-configuration == 'Release'
       run: |
