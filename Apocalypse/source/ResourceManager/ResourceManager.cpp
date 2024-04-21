@@ -3,6 +3,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <filesystem>
 
 #include "stb_image.h"
 
@@ -13,6 +14,7 @@
 std::map<std::string, Texture2D> ResourceManager::textures;
 std::map<std::string, Shader> ResourceManager::shaders;
 std::map<std::string, Font> ResourceManager::fonts;
+std::map<std::string, Flipbook> ResourceManager::flipbooks;
 
 void ResourceManager::loadShader(const char* vShaderFile, const char* fShaderFile, const char* gShaderFile, const std::string& name)
 {
@@ -184,7 +186,7 @@ void ResourceManager::loadFont(const char* fontFilePath, const unsigned int font
 			texture,
 			glm::ivec2(face->glyph->bitmap.width, face->glyph->bitmap.rows),
 			glm::ivec2(face->glyph->bitmap_left, face->glyph->bitmap_top),
-			face->glyph->advance.x
+			static_cast<unsigned int>(face->glyph->advance.x)
 		};
 
 		fonts[name].Characters.insert(std::pair<char, Character>(c, character));
@@ -207,6 +209,34 @@ Font& ResourceManager::getFont(const std::string& name)
 	}
 
 	return fonts[name];
+}
+
+void ResourceManager::loadFlipbook(const char* directoryPath, const std::string& name)
+{
+	if (std::filesystem::exists(directoryPath) && std::filesystem::is_directory(directoryPath))
+	{
+		for (const auto& entry : std::filesystem::directory_iterator(directoryPath))
+		{
+			std::string path = entry.path().generic_string();
+
+			// TODO: delete
+			std::cout << path << std::endl;
+			
+			ResourceManager::loadTexture(path.c_str(), true, path);
+			flipbooks[name].addFrame(path);
+		}
+	}
+}
+
+Flipbook& ResourceManager::getFlipbook(const std::string& name)
+{
+	if (flipbooks.find(name) == flipbooks.end())
+	{
+		// TODO: conventie formatare mesaje eroare
+		std::cout << "ERROR::RESOURCEMANAGER: Could not find the flipbook!\n";
+	}
+
+	return flipbooks[name];
 }
 
 void ResourceManager::clear()

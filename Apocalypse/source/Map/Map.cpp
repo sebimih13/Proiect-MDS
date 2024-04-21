@@ -1,5 +1,15 @@
 #include "Map.h"
 
+#include <iostream>
+#include <sstream>
+
+#include "../Renderer/SpriteRenderer.h"
+#include "../ResourceManager/ResourceManager.h"
+
+#include "../Entity/Door/Door.h"
+#include "../Entity/Floor/Floor.h"
+#include "../Entity/Wall/Wall.h"
+
 Map& Map::get()
 {
 	static Map instance;
@@ -7,31 +17,54 @@ Map& Map::get()
 	return instance;
 }
 
-int Map::getCell(int x, int y)
-{
-	if (x < 0 || x >= this->WIDTH || y < 0 || y >= this->HEIGHT)
-		return 0;
-
-	return this->map[x][y];
-}
-
 void Map::readMap(const std::string& path)
 {
 	std::ios_base::sync_with_stdio(false);
 
 	std::ifstream in(path);
+	if (in.fail())
+	{
+		throw std::runtime_error("Cannot open file: " + path);
+	}
 	in.tie(nullptr);
 
-	in >> this->WIDTH >> this->HEIGHT;
+	while (!in.eof())
+	{
+		this->map.emplace_back();
 
-	this->map.resize(this->WIDTH);
-	for (int i = 0; i < this->map.size(); ++i)
-		this->map[i].resize(this->HEIGHT);
+		std::string line;
+		std::getline(in, line);
+		std::stringstream ss(line);
 
-	for (int y = this->HEIGHT - 1; y >= 0; --y)
-		for (int x = 0; x < this->WIDTH; ++x)
-			in >> this->map[x][y];
+		std::string code;
+		while (ss >> code)
+		{
+			if (code[0] == 'M')
+			{
+				this->map.back().emplace_back(std::make_shared<Wall>((double)this->map.back().size() - 0.5, (double)this->map.size() - 0.5, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0, code));
+			}
+			else if (code[0] == '.')
+			{
+				this->map.back().emplace_back(std::make_shared<Floor>((double)this->map.back().size() - 0.5, (double)this->map.size() - 0.5, 1.0, 1.0, 0.0, 0.0, code));
+			}
+			else if (code[0] == 'D')
+			{
+
+			}
+		}
+	}
 
 	in.close();
+}
+
+void Map::draw()
+{
+	for (int i = 0; i < this->map.size(); ++i)
+	{
+		for (int j = 0; j < this->map[0].size(); ++j)
+		{
+			this->map[i][j]->draw();
+		}
+	}
 }
 

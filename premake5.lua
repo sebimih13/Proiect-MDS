@@ -209,7 +209,9 @@ workspace "Apocalypse"
             "%{prj.name}/**.cpp",
             "%{prj.name}/**.hpp",
             "%{prj.name}/**.vert",
-            "%{prj.name}/**.frag"
+            "%{prj.name}/**.frag",
+            "%{prj.name}/**.map",
+            "%{prj.name}/**.ini"
         }
 
         includedirs
@@ -264,9 +266,7 @@ workspace "Apocalypse"
             "%{prj.name}/**.cpp",
             "Apocalypse/source/**.h",
             "Apocalypse/source/**.cpp",
-            "Apocalypse/source/**.hpp",
-            "Apocalypse/shaders/**.vert",
-            "Apocalypse/shaders/**.frag"
+            "Apocalypse/source/**.hpp"
         }
 
         includedirs
