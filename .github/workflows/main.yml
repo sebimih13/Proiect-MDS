@@ -17,7 +17,7 @@ env:
   ZIP_NAME: 'windows-x64'
 
 jobs:
-  windows:
+  windows-build:
     runs-on: windows-latest
     
     strategy:
@@ -73,8 +73,20 @@ jobs:
         files: TestResults\results-${{matrix.build-configuration}}.trx
         check_name: 'Test Results ${{matrix.build-configuration}}'
 
+  windows-release:
+    runs-on: windows-latest
+    needs: [windows-build]
+    if: startsWith(github.ref, 'refs/tags/')
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        build-configuration: [Debug, Release]
+        build-platform: [x64]
+
+    steps:
     - name: Move artifacts to Release Folder
-      if: startsWith(github.ref, 'refs/tags/') && matrix.build-configuration == 'Release'
+      if: matrix.build-configuration == 'Release'
       run: |
         mkdir ${{ env.ZIP_NAME }}
         copy bin/Release-windows-x86_64/Apocalypse/*.exe ${{ env.ZIP_NAME }}
@@ -100,25 +112,25 @@ jobs:
         dir /a ${{ env.ZIP_NAME }}
     
     - name: Set Tag Name
-      if: startsWith(github.ref, 'refs/tags/') && matrix.build-configuration == 'Release'
+      if: matrix.build-configuration == 'Release'
       shell: bash
       run: echo "TAG_NAME=${GITHUB_REF#'refs/tags/'}" >> ${GITHUB_ENV}
     
     - name: Add tag to folder name
-      if: startsWith(github.ref, 'refs/tags/') && matrix.build-configuration == 'Release'
+      if: matrix.build-configuration == 'Release'
       run: move ${{ env.ZIP_NAME }} ${{ env.ZIP_NAME }}-${{ env.TAG_NAME }}
     
     - name: Archive Release
+      if: matrix.build-configuration == 'Release'
       uses: thedoctor0/zip-release@master
-      if: startsWith(github.ref, 'refs/tags/') && matrix.build-configuration == 'Release'
       with:
         type: 'zip'
         path: ${{ env.ZIP_NAME }}-${{ env.TAG_NAME }}
         filename: ${{ env.ZIP_NAME }}-${{ env.TAG_NAME }}.zip
     
     - name: Release
+      if: matrix.build-configuration == 'Release'
       uses: softprops/action-gh-release@v2
-      if: startsWith(github.ref, 'refs/tags/') && matrix.build-configuration == 'Release'
       with:
         files: ${{ env.ZIP_NAME }}-${{ env.TAG_NAME }}.zip
 
