@@ -2,6 +2,7 @@
 #include "../Wall/Wall.h"
 #include "../Door/Door.h"
 #include "../Bullet/Bullet.h"
+#include "../Explosion/Explosion.h"
 
 Human::Human(double x, double y, double drawWidth, double drawHeight, double rotateAngle, double speed, double collideWidth, double collideHeight, const std::map<AnimatedEntity::EntityStatus, std::string>& animationsName2D, const std::vector<EntityStatus>& statuses, double health) :
 	Entity(x, y, drawWidth, drawHeight, rotateAngle, speed),
@@ -15,6 +16,9 @@ Human::Human(double x, double y, double drawWidth, double drawHeight, double rot
 void Human::onCollide(CollidableEntity& other, glm::vec2 overlap)
 {
 	// TODO: nu e totul implementat
+
+	if (dynamic_cast<Explosion*>(&other))
+		return;
 
 	if (dynamic_cast<Wall*>(&other) != nullptr)
 	{
@@ -67,7 +71,7 @@ void Human::onCollide(CollidableEntity& other, glm::vec2 overlap)
 				this->y += (overlap.y + CollidableEntity::EPS) / 2.0;
 		}
 
-		this->health -= dynamic_cast<Bullet*>(&other)->getDamage();
+		this->health -= dynamic_cast<Bullet*>(&other)->getDamage(); // e ok pt ca human e considerat ca nu are armor si player-ul(human) oricum da override la onCollide
 		this->health = std::max(0.0, this->health);
 	}
 	else if (dynamic_cast<Human*>(&other) != nullptr)

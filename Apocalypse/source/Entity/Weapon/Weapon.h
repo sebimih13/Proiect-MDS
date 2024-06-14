@@ -16,8 +16,11 @@ public:
 		SHOTGUN,
 		AK47,
 		M4,
-		MINIGUN
+		MINIGUN,
+		GRENADE
 	};
+
+	static const double EPSILON_ANGLE;
 
 protected:
 	double fireRate;
@@ -29,14 +32,14 @@ protected:
 	std::string reloadSound;
 	std::string drawSound;
 	std::string emptySound;
+	
+	double price;
 
 	bool isReloading;
 	double timeSinceLastShot;
 
-	static const double EPSILON_TIME;
-
 public:
-	Weapon(double x, double y, double drawWidth, double drawHeight, double rotateAngle, double speed, const std::string& textureName2D, double interactionWidth, double interactionHeight, double fireRate, int maxBullets, double damage, WeaponType weaponType, double shortRangeAttackRadius, const std::string& reloadSound, const std::string& drawSound, const std::string& emptySound);
+	Weapon(double x, double y, double drawWidth, double drawHeight, double rotateAngle, double speed, const std::string& textureName2D, double interactionWidth, double interactionHeight, double fireRate, int maxBullets, double damage, WeaponType weaponType, double shortRangeAttackRadius, const std::string& reloadSound, const std::string& drawSound, const std::string& emptySound, double price = 0);
 	virtual ~Weapon() = default;
 
 	virtual bool isInInteraction() override;
@@ -55,6 +58,10 @@ public:
 
 	inline int getBullets() const { return this->numBullets; }
 
-	inline bool recentlyShot() const { return GlobalClock::get().getCurrentTime() - this->timeSinceLastShot < Weapon::EPSILON_TIME; }
+	bool recentlyShot() const;
+
+	inline double getDamage() const { return this->damage; }
+	inline double getFireRate() const { return this->fireRate; }
+	inline double getPrice() const { return this->price; }
 };
 

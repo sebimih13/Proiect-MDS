@@ -7,24 +7,28 @@
 #include "../Player/Player.h"
 #include "../../GlobalClock/GlobalClock.h"
 #include "../Bullet/Bullet.h"
+#include "../Enemy/Enemy.h"
+#include "../Bullet/ThrownGrenade.h"
 
 #include <glm/gtc/matrix_transform.hpp>
 
 #include <iostream>
+#include <random>
 
-Weapon::Weapon(double x, double y, double drawWidth, double drawHeight, double rotateAngle, double speed, const std::string& textureName2D, double interactionWidth, double interactionHeight, double fireRate, int maxBullets, double damage, WeaponType weaponType, double shortRangeAttackRadius, const std::string& reloadSound, const std::string& drawSound, const std::string& emptySound)
+const double Weapon::EPSILON_ANGLE = 30.0; //macar 30 de grade sa se uite catre inamic atunci cand foloseste pumnul sau cutitul pentru a ii da damage
+
+Weapon::Weapon(double x, double y, double drawWidth, double drawHeight, double rotateAngle, double speed, const std::string& textureName2D, double interactionWidth, double interactionHeight, double fireRate, int maxBullets, double damage, WeaponType weaponType, double shortRangeAttackRadius, const std::string& reloadSound, const std::string& drawSound, const std::string& emptySound, double price)
 	: Entity(x, y, drawWidth, drawHeight, rotateAngle, speed)
 	, TexturableEntity(x, y, drawWidth, drawHeight, rotateAngle, speed, textureName2D)
 	, InteractiveEntity(x, y, drawWidth, drawHeight, rotateAngle, speed, interactionWidth, interactionHeight)
 	, PickUp(x, y, drawWidth, drawHeight, rotateAngle, speed, textureName2D, interactionWidth, interactionHeight)
 	, fireRate(fireRate), maxBullets(maxBullets), numBullets(maxBullets), damage(damage), weaponType(weaponType), shortRangeAttackRadius(shortRangeAttackRadius)
 	, reloadSound(reloadSound), drawSound(drawSound), emptySound(emptySound)
+	, price(price)
 	, isReloading(false), timeSinceLastShot(GlobalClock::get().getCurrentTime())
 {
 
 }
-
-const double Weapon::EPSILON_TIME = 0.5;
 
 bool Weapon::isInInteraction()
 {
@@ -43,7 +47,7 @@ bool Weapon::isInInteraction()
 
 void Weapon::onInteraction()
 {
-	// TODO:
+	
 }
 
 void Weapon::onClick()
@@ -55,7 +59,10 @@ void Weapon::onClick()
 
 	if (numBullets == 0 && weaponType != WeaponType::FIST && weaponType != WeaponType::KNIFE)
 	{
-		SoundManager::get().play(emptySound, false);
+		if (!SoundManager::get().isPlaying(emptySound))
+		{
+			SoundManager::get().play(emptySound, false);
+		}
 		return;
 	}
 
@@ -71,12 +78,74 @@ void Weapon::onClick()
 		switch (weaponType)
 		{
 		case WeaponType::FIST:
+		{
 			SoundManager::get().play("fist", false);
-			break;
 
+			std::vector<std::shared_ptr<Entity>>& entities = Game::get().getEntities();
+			for (int i = 0; i < entities.size(); ++i)
+			{
+				double deltaXEntity = entities[i]->getX() - Player::get().getX();
+				double deltaYEntity = entities[i]->getY() - Player::get().getY();
+				double normalizedDeltaXEntity = deltaXEntity / glm::sqrt(deltaXEntity * deltaXEntity + deltaYEntity * deltaYEntity);
+				double normalizedDeltaYEntity = deltaYEntity / glm::sqrt(deltaXEntity * deltaXEntity + deltaYEntity * deltaYEntity);
+				double deltaXPlayerAngle = glm::cos(glm::radians(Player::get().getRotateAngle()));
+				double deltaYPlayerAngle = glm::sin(glm::radians(Player::get().getRotateAngle()));
+
+				if (std::dynamic_pointer_cast<Human>(entities[i]) &&
+					normalizedDeltaXEntity * deltaXPlayerAngle + normalizedDeltaYEntity * deltaYPlayerAngle > glm::cos(glm::radians(Weapon::EPSILON_ANGLE)) &&
+					(entities[i]->getX() - Player::get().getX()) * (entities[i]->getX() - Player::get().getX()) +
+					(entities[i]->getY() - Player::get().getY()) * (entities[i]->getY() - Player::get().getY()) < this->shortRangeAttackRadius * this->shortRangeAttackRadius)
+				{
+					std::dynamic_pointer_cast<Human>(entities[i])->setHealth(std::max(0.0, std::dynamic_pointer_cast<Human>(entities[i])->getHealth() - this->damage));
+				}
+			}
+
+			break;
+		}
 		case WeaponType::KNIFE:
-			// TODO
-			// SoundManager::get().play("pistolShot", false);
+		{
+			std::vector<std::shared_ptr<Entity>>& entities = Game::get().getEntities();
+			for (int i = 0; i < entities.size(); ++i)
+			{
+				double deltaXEntity = entities[i]->getX() - Player::get().getX();
+				double deltaYEntity = entities[i]->getY() - Player::get().getY();
+				double normalizedDeltaXEntity = deltaXEntity / glm::sqrt(deltaXEntity * deltaXEntity + deltaYEntity * deltaYEntity);
+				double normalizedDeltaYEntity = deltaYEntity / glm::sqrt(deltaXEntity * deltaXEntity + deltaYEntity * deltaYEntity);
+				double deltaXPlayerAngle = glm::cos(glm::radians(Player::get().getRotateAngle()));
+				double deltaYPlayerAngle = glm::sin(glm::radians(Player::get().getRotateAngle()));
+
+				if (std::dynamic_pointer_cast<Human>(entities[i]) &&
+					normalizedDeltaXEntity * deltaXPlayerAngle + normalizedDeltaYEntity * deltaYPlayerAngle > glm::cos(glm::radians(Weapon::EPSILON_ANGLE)) &&
+					(entities[i]->getX() - Player::get().getX()) * (entities[i]->getX() - Player::get().getX()) +
+					(entities[i]->getY() - Player::get().getY()) * (entities[i]->getY() - Player::get().getY()) < this->shortRangeAttackRadius * this->shortRangeAttackRadius)
+				{
+					std::dynamic_pointer_cast<Human>(entities[i])->setHealth(std::max(0.0, std::dynamic_pointer_cast<Human>(entities[i])->getHealth() - this->damage));
+				}
+			}
+
+			int random_number = std::rand() % 4;
+			switch (random_number)
+			{
+			case 0:
+				SoundManager::get().play("knife_01", false);
+				break;
+
+			case 1:
+				SoundManager::get().play("knife_02", false);
+				break;
+
+			case 2:
+				SoundManager::get().play("knife_03", false);
+				break;
+
+			case 3:
+				SoundManager::get().play("knife_04", false);
+				break;
+
+			default:
+				break;
+			}
+		}
 			break;
 		}
 	}
@@ -94,7 +163,6 @@ void Weapon::onClick()
 
 		--this->numBullets;
 
-		// TODO: refactor
 		switch (weaponType)
 		{
 		case WeaponType::REVOLVER:
@@ -103,27 +171,68 @@ void Weapon::onClick()
 			break;
 
 		case WeaponType::SHOTGUN:
-			// TODO
-			// SoundManager::get().play("pistolShot", false);
-			// Game::get().addEntity(std::make_shared<Bullet>(static_cast<double>(bulletLocation.x), static_cast<double>(bulletLocation.y), 0.3, 0.3, Player::get().getRotateAngle(), 10.0, 0.3, 0.3, "bullet0", 20.0));
+			SoundManager::get().play("shotgun_01", false);
+			Game::get().addEntity(std::make_shared<Bullet>(static_cast<double>(bulletLocation.x), static_cast<double>(bulletLocation.y), 0.3, 0.3, Player::get().getRotateAngle(), 10.0, 0.3, 0.3, "bullet1", this->damage));
 			break;
 
 		case WeaponType::AK47:
-			// TODO
-			// SoundManager::get().play("pistolShot", false);
-			// Game::get().addEntity(std::make_shared<Bullet>(static_cast<double>(bulletLocation.x), static_cast<double>(bulletLocation.y), 0.3, 0.3, Player::get().getRotateAngle(), 10.0, 0.3, 0.3, "bullet0", 20.0));
+			SoundManager::get().play("ak47_01", false);
+			Game::get().addEntity(std::make_shared<Bullet>(static_cast<double>(bulletLocation.x), static_cast<double>(bulletLocation.y), 0.3, 0.3, Player::get().getRotateAngle(), 20.0, 0.3, 0.3, "bullet3", this->damage));
 			break;
 
 		case WeaponType::M4:
-			// TODO
-			// SoundManager::get().play("pistolShot", false);
-			// Game::get().addEntity(std::make_shared<Bullet>(static_cast<double>(bulletLocation.x), static_cast<double>(bulletLocation.y), 0.3, 0.3, Player::get().getRotateAngle(), 10.0, 0.3, 0.3, "bullet0", 20.0));
+		{
+			int random_number = std::rand() % 4;
+			switch (random_number)
+			{
+			case 0:
+				SoundManager::get().play("m4a1_01", false);
+				break;
+
+			case 1:
+				SoundManager::get().play("m4a1_02", false);
+				break;
+
+			case 2:
+				SoundManager::get().play("m4a1_03", false);
+				break;
+
+			case 3:
+				SoundManager::get().play("m4a1_04", false);
+				break;
+
+			default:
+				break;
+			}
+
+			Game::get().addEntity(std::make_shared<Bullet>(static_cast<double>(bulletLocation.x), static_cast<double>(bulletLocation.y), 0.3, 0.3, Player::get().getRotateAngle(), 20.0, 0.3, 0.3, "bullet3", this->damage));
+		}
 			break;
 
 		case WeaponType::MINIGUN:
-			// TODO
-			// SoundManager::get().play("pistolShot", false);
-			// Game::get().addEntity(std::make_shared<Bullet>(static_cast<double>(bulletLocation.x), static_cast<double>(bulletLocation.y), 0.3, 0.3, Player::get().getRotateAngle(), 10.0, 0.3, 0.3, "bullet0", 20.0));
+			SoundManager::get().play("minigun_01", false);
+			Game::get().addEntity(std::make_shared<Bullet>(static_cast<double>(bulletLocation.x), static_cast<double>(bulletLocation.y), 0.3, 0.3, Player::get().getRotateAngle(), 20.0, 0.3, 0.3, "bullet0", this->damage));
+			break;
+
+		case WeaponType::GRENADE:
+		{
+			int random_number = std::rand() % 2;
+			switch (random_number)
+			{
+			case 0:
+				SoundManager::get().play("grenadeThrow_01", false);
+				break;
+
+			case 1:
+				SoundManager::get().play("grenadeThrow_02", false);
+				break;
+
+			default:
+				break;
+			}
+
+			Game::get().addEntity(std::make_shared<ThrownGrenade>(static_cast<double>(bulletLocation.x), static_cast<double>(bulletLocation.y), 0.3, 0.3, Player::get().getRotateAngle(), 3.0, 0.3, 0.3, "grenade0", 0.0, 1.0, this->damage, 15.0, 1.0)); // durata aruncare grenada, damage, scale explozie si durata explozie (ultimii 4 parametrii)
+		}
 			break;
 		}
 	}
@@ -177,5 +286,15 @@ void Weapon::reload()
 	{
 		SoundManager::get().play(reloadSound, false);
 	}
+}
+
+bool Weapon::recentlyShot() const
+{
+	if (weaponType == WeaponType::AK47 || weaponType == WeaponType::M4 || weaponType == WeaponType::MINIGUN)
+	{
+		return GlobalClock::get().getCurrentTime() - this->timeSinceLastShot < 0.1;
+	}
+
+	return GlobalClock::get().getCurrentTime() - this->timeSinceLastShot < this->fireRate;
 }
 

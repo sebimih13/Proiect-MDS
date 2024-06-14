@@ -11,6 +11,10 @@
 #include "../MenuManager.h"
 #include "../../ButtonBuilder/ButtonBuilder.h"
 #include "../../Game/Game.h"
+#include "../MainMenu/MainMenu.h"
+#include "../../WaveManager/WaveManager.h"
+#include "../AlertBox/AlertBox.h"
+#include "../ChangeSkinMenu/ChangeSkinMenu.h"
 
 
 
@@ -21,6 +25,7 @@ PauseMenu::PauseMenu(double x, double y, double drawWidth, double drawHeight, do
 	buttons(std::map<std::string, Button>{
 		{ "quit", Button(getButtonPosX(), getButtonPosY(0), buttonWidth, buttonHeight, 0, 0, buttonWidth, buttonHeight, ButtonBuilder::buttonTextures0(), "Quit", 0, 1.0, "Antonio", true) },
 		{ "continue", Button(getButtonPosX(), getButtonPosY(1), buttonWidth, buttonHeight, 0, 0, buttonWidth, buttonHeight, ButtonBuilder::buttonTextures0(), "Continue", 0, 1.0, "Antonio", true) },
+		{ "save", Button(getButtonPosX(), getButtonPosY(2), buttonWidth, buttonHeight, 0, 0, buttonWidth, buttonHeight, ButtonBuilder::buttonTextures0(), "Save", 0, 1.0, "Antonio", true) },
 		{ "back", ButtonBuilder::backButton(getButtonCoordsX(), getButtonCoordsY())}
 			//Button(getButtonCoordsX(), getButtonCoordsY(), 20, 20, 0, 0, 20, 20, std::map<Button::Status, std::string>{{Button::Status::DEFAULT, ".0"}, { Button::Status::HOVERED, ".1" }, { Button::Status::CLICKED, ".2" }}, "")}
 })
@@ -40,6 +45,9 @@ PauseMenu::PauseMenu(double x, double y, double drawWidth, double drawHeight, do
 		},
 		{
 			"back", ButtonBuilder::backButtonClickFunction
+		},
+		{
+			"quit", [](Button&){MenuManager::get().push(AlertBox::getCenteredAlertBox("Are you sure you want to quit?", "Quit", PauseMenu::quit));}
 		}
 		}
 	);
@@ -110,3 +118,15 @@ void PauseMenu::playMenu()
 	}
 }
 
+void PauseMenu::quit(Button&)
+{
+	Game::get().clear();
+
+	WaveManager::deleteInstance();
+	Player::deleteInstance();
+	Map::deleteInstance();
+
+	MenuManager::get().clear();
+
+	MenuManager::get().push(MainMenu::get());
+}

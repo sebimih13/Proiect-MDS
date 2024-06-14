@@ -22,70 +22,116 @@
 #include "../Door/Door.h"
 #include "../../MenuManager/MenuManager.h"
 #include "../../MenuManager/ShopMenu/ShopMenu.h"
+#include "../../MenuManager/EndScreen/EndScreen.h"
 #include "../../Random/Random.h"
+#include "../Explosion/Explosion.h"
+#include "../../WaveManager/WaveManager.h"
 
-Player::Player(double x, double y, double drawWidth, double drawHeight, double rotateAngle, double speed, double collideWidth, double collideHeight, const std::map<AnimatedEntity::EntityStatus, std::string>& animationsName2D, const std::vector<EntityStatus>& statuses, double runningSpeed, double health = 100.0, double stamina = 100.0, double armor = 0.0) :
+std::shared_ptr<Player> Player::instance = nullptr;
+
+glm::vec3 Player::outfitColor_static = glm::vec3(0.055f, 0.29f, 0.125f);
+
+Player::Player(double x, double y, double drawWidth, double drawHeight, double rotateAngle, double speed, double collideWidth, double collideHeight, const std::map<AnimatedEntity::EntityStatus, std::string>& animationsName2D, const std::vector<EntityStatus>& statuses, double runningSpeed, double health = 100.0, double stamina = 100.0, double armor = 0.0, int numKills = 0) :
 	Entity(x, y, drawWidth, drawHeight, rotateAngle, speed),
 	CollidableEntity(x, y, drawWidth, drawHeight, rotateAngle, speed, collideWidth, collideHeight),
 	AnimatedEntity(x, y, drawWidth, drawHeight, rotateAngle, speed, animationsName2D, statuses),
 	Human(x, y, drawWidth, drawHeight, rotateAngle, speed, collideWidth, collideHeight, animationsName2D, statuses, health),
-	runningSpeed(runningSpeed), stamina(stamina), armor(armor), armorCap(100.0), staminaChangeSpeed(50.0), staminaCap(100.0), gold(0), goldCap(9999999), // TODO: mai frumos pt goldCap se poate?
-	moveUpUsed(false), moveDownUsed(false), moveRightUsed(false), moveLeftUsed(false), runUsed(false), interactUsed(false),
+	runningSpeed(runningSpeed), stamina(stamina), armor(armor), armorCap(100.0), staminaChangeSpeed(50.0), staminaCap(100.0), gold(0), goldCap(9999999),
+	moveUpUsed(false), moveDownUsed(false), moveRightUsed(false), moveLeftUsed(false), runUsed(false), interactUsed(false), enterShopUsed(false),
 	walkingOffsetSize(0.01), runningOffsetSize(0.05),
 	walkingOffsetSpeed(10.0), runningOffsetSpeed(15.0),
-	weapons({ std::make_shared<Weapon>(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "fist0", 0.0, 0.0, 0.0, 1, 0.0, Weapon::WeaponType::FIST, 0.0, "", "", "")
-		, nullptr // knife
-		, std::make_shared<Weapon>(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "pistol0", 0.0, 0.0, 0.5, 20, 25.0, Weapon::WeaponType::REVOLVER, 0.0, "revolverReload", "revolverDraw", "revolverEmpty")
-		, nullptr // shotgun
-		, nullptr // ak47
-		, nullptr // m4
+	weapons({ std::make_shared<Weapon>(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "fist0", 0.0, 0.0, 0.5, 1, 10.0, Weapon::WeaponType::FIST, 0.75, "", "", "")
+		, std::make_shared<Weapon>(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "knife0", 0.0, 0.0, 0.5, 1, 15.0, Weapon::WeaponType::KNIFE, 0.75, "knifeLook", "knifeDraw", "knifeLook") // knife
+		, std::make_shared<Weapon>(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "pistol0", 0.0, 0.0, 0.5, 20, 25.0, Weapon::WeaponType::REVOLVER, 0.0, "revolverReload", "revolverDraw", "revolverEmpty", 100) // revolver
+		, std::make_shared<Weapon>(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "shotgun0", 0.0, 0.0, 1.0, 4, 50.0, Weapon::WeaponType::SHOTGUN, 0.0, "shotgunReload", "shotgunDraw", "shotgunEmpty", 150) // shotgun
+		, std::make_shared<Weapon>(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "automated1", 0.0, 0.0, 0.3, 25, 35.0, Weapon::WeaponType::AK47, 0.0, "ak47Reload", "ak47Draw", "ak47Empty", 200) // ak47
+		, std::make_shared<Weapon>(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "automated0", 0.0, 0.0, 0.3, 25, 35.0, Weapon::WeaponType::M4, 0.0, "m4a1Reload", "m4a1Draw", "m4a1Empty", 300) // m4
+		// , std::make_shared<Weapon>(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "minigun0", 0.0, 0.0, 0.2, 50, 10.0, Weapon::WeaponType::MINIGUN, 0.0, "minigunReload", "minigunDraw", "minigunEmpty", 500) // minigun
+		, std::make_shared<Weapon>(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "grenade0", 0.0, 0.0, 1.0, 1, 100.0, Weapon::WeaponType::GRENADE, 0.0, "", "grenadeDraw", "grenadeDraw") // grenade
 		}),
+	hasWeapon({ {Weapon::WeaponType::FIST, true},
+		{Weapon::WeaponType::KNIFE, true},
+		{Weapon::WeaponType::REVOLVER, true},
+		{Weapon::WeaponType::SHOTGUN, false},
+		{Weapon::WeaponType::AK47, false},
+		{Weapon::WeaponType::M4, false},
+		// {Weapon::WeaponType::MINIGUN, false},
+		{Weapon::WeaponType::GRENADE, true} }),
 	currentWeaponIndex(0),
-	isTired(false),
-	isWalking(false),
-	isRunning(false)
+	isTired(false), isWalking(false), isRunning(false), isShooting(false), numKills(numKills), outfitColor(outfitColor_static)
 {
-	// TODO: test
-	bullets[Weapon::WeaponType::REVOLVER] = 1024;
+	bullets[Weapon::WeaponType::REVOLVER] = 60;
+	bullets[Weapon::WeaponType::SHOTGUN] = 0;
+	bullets[Weapon::WeaponType::AK47] = 0;
+	bullets[Weapon::WeaponType::M4] = 0;
+	bullets[Weapon::WeaponType::MINIGUN] = 0;
+	bullets[Weapon::WeaponType::GRENADE] = 10;
+
+	bulletPrices[Weapon::WeaponType::REVOLVER] = 50;
+	bulletPrices[Weapon::WeaponType::SHOTGUN] = 75;
+	bulletPrices[Weapon::WeaponType::AK47] = 50;
+	bulletPrices[Weapon::WeaponType::M4] = 75;
+	bulletPrices[Weapon::WeaponType::MINIGUN] = 50;
+	bulletPrices[Weapon::WeaponType::GRENADE] = 200;
 }
 
 Player& Player::get()
 {
-	static Player instance(10.5, 10.5, 1.0, 1.0, 0.0, 5.0, 0.4, 0.4, std::map<AnimatedEntity::EntityStatus, std::string>
+	if (Player::instance == nullptr)
 	{
-		   { EntityStatus::ARMS_HOLDING_GRENADE, "player0ArmsHoldingGrenade" },
-		   { EntityStatus::ARMS_HOLDING_KNIFE, "player0ArmsHoldingKnife" },
-		   { EntityStatus::ARMS_HOLDING_PISTOL, "player0ArmsHoldingPistol" },
-		   { EntityStatus::ARMS_MOVING_AHEAD, "player0ArmsMovingAhead" },
-		   { EntityStatus::ARMS_MOVING_AROUND_WALKING, "player0ArmsMovingAroundWalking"},
-		   { EntityStatus::ARMS_MOVING_AROUND_RUNNING, "player0ArmsMovingAroundRunning"},
-		   { EntityStatus::ARMS_NOT, "player0ArmsNot"},
-		   { EntityStatus::ARMS_RELOADING_PISTOL, "player0ArmsReloadingPistol"},
-		   { EntityStatus::ARMS_USING_GRENADE, "player0ArmsUsingGrenade"},
-		   { EntityStatus::ARMS_USING_KNIFE, "player0ArmsUsingKnife"},
-		   { EntityStatus::ARMS_USING_PISTOL, "player0ArmsUsingPistol"},
-		   { EntityStatus::BODY_IDLE, "player0BodyIdle"},
-		   { EntityStatus::HEAD_ANGRY, "player0HeadAngry"},
-		   { EntityStatus::HEAD_IDLE, "player0HeadIdle"},
-		   { EntityStatus::HEAD_SATISFIED, "player0HeadSatisfied"},
-		   { EntityStatus::HEAD_TIRED, "player0HeadTired"},
-		   { EntityStatus::LEGS_MOVING_AROUND, "player0LegsMovingAround"},
-		   { EntityStatus::LEGS_NOT, "player0LegsNot"}
-	},
-		{
+		std::map<EntityStatus, std::string> m = {
+			{ EntityStatus::ARMS_HOLDING_GRENADE, "player0ArmsHoldingGrenade" },
+			{ EntityStatus::ARMS_HOLDING_KNIFE, "player0ArmsHoldingKnife" },
+			{ EntityStatus::ARMS_HOLDING_PISTOL, "player0ArmsHoldingPistol" },
+			{ EntityStatus::ARMS_HOLDING_SHOTGUN, "player0ArmsHoldingShotgun" },
+			{ EntityStatus::ARMS_HOLDING_AK47, "player0ArmsHoldingAK47" },
+			{ EntityStatus::ARMS_HOLDING_M4, "player0ArmsHoldingM4" },
+			{ EntityStatus::ARMS_MOVING_AHEAD, "player0ArmsMovingAhead" },
+			{ EntityStatus::ARMS_MOVING_AROUND_WALKING, "player0ArmsMovingAroundWalking" },
+			{ EntityStatus::ARMS_MOVING_AROUND_RUNNING, "player0ArmsMovingAroundRunning" },
+			{ EntityStatus::ARMS_NOT, "player0ArmsNot" },
+			{ EntityStatus::ARMS_RELOADING_PISTOL, "player0ArmsReloadingPistol" },
+			{ EntityStatus::ARMS_RELOADING_SHOTGUN, "player0ArmsReloadingShotgun" },
+			{ EntityStatus::ARMS_RELOADING_AK47, "player0ArmsReloadingAK47" },
+			{ EntityStatus::ARMS_RELOADING_M4, "player0ArmsReloadingM4" },
+			{ EntityStatus::ARMS_USING_GRENADE, "player0ArmsUsingGrenade" },
+			{ EntityStatus::ARMS_USING_KNIFE, "player0ArmsUsingKnife" },
+			{ EntityStatus::ARMS_USING_PISTOL, "player0ArmsUsingPistol" },
+			{ EntityStatus::ARMS_USING_SHOTGUN, "player0ArmsUsingShotgun" },
+			{ EntityStatus::ARMS_USING_FIST, "player0ArmsUsingFist" },
+			{ EntityStatus::ARMS_USING_AK47, "player0ArmsUsingAK47" },
+			{ EntityStatus::ARMS_USING_M4, "player0ArmsUsingM4" },
+			{ EntityStatus::BODY_IDLE, "player0BodyIdle" },
+			{ EntityStatus::HEAD_ANGRY, "player0HeadAngry" },
+			{ EntityStatus::HEAD_IDLE, "player0HeadIdle" },
+			{ EntityStatus::HEAD_SATISFIED, "player0HeadSatisfied" },
+			{ EntityStatus::HEAD_TIRED, "player0HeadTired" },
+			{ EntityStatus::LEGS_MOVING_AROUND, "player0LegsMovingAround" },
+			{ EntityStatus::LEGS_NOT, "player0LegsNot" }
+		};
+		std::vector<EntityStatus> v = {
 			EntityStatus::LEGS_NOT,
 			EntityStatus::ARMS_MOVING_AHEAD,
 			EntityStatus::BODY_IDLE,
 			EntityStatus::HEAD_IDLE
-		}
-	, 7.5);
+		};
+		Player::instance = std::shared_ptr<Player>(new Player(10.5, 10.5, 1.0, 1.0, 0.0, 5.0, 0.4, 0.4, m, v, 7.5));
+	}
 
-	return instance;
+	return *Player::instance;
+}
+
+void Player::deleteInstance()
+{
+	InputHandler::getPlayerInputComponent().clear();
+
+	Player::instance = nullptr;
 }
 
 void Player::onCollide(CollidableEntity& other, glm::vec2 overlap)
 {
-	// TODO: nu e totul implementat
+	if (dynamic_cast<Explosion*>(&other))
+		return;
 
 	if (dynamic_cast<Wall*>(&other) != nullptr)
 	{
@@ -121,6 +167,45 @@ void Player::onCollide(CollidableEntity& other, glm::vec2 overlap)
 				this->y += (overlap.y + CollidableEntity::EPS);
 		}
 	}
+	else if (dynamic_cast<Bullet*>(&other) != nullptr)
+	{
+		if (overlap.x < overlap.y)
+		{
+			if (this->x < other.getX())
+				this->x -= (overlap.x + CollidableEntity::EPS) / 2.0;
+			else
+				this->x += (overlap.x + CollidableEntity::EPS) / 2.0;
+		}
+		else
+		{
+			if (this->y < other.getY())
+				this->y -= (overlap.y + CollidableEntity::EPS) / 2.0;
+			else
+				this->y += (overlap.y + CollidableEntity::EPS) / 2.0;
+		}
+
+		double appliedDamage = dynamic_cast<Bullet*>(&other)->getDamage();
+		if (this->armor >= appliedDamage)
+		{
+			this->armor -= appliedDamage;
+			appliedDamage = 0.0;
+		}
+		else
+		{
+			appliedDamage -= this->armor;
+			this->armor = 0.0;
+		}
+		if (this->health >= appliedDamage)
+		{
+			this->health -= appliedDamage;
+			appliedDamage = 0.0;
+		}
+		else
+		{
+			appliedDamage -= this->health;
+			this->health = 0.0;
+		}
+	}
 	else if (dynamic_cast<CollidableEntity*>(&other) != nullptr) // TODO: aici intra in calcul si bullets !!!!
 	{
 		if (overlap.x < overlap.y)
@@ -153,6 +238,11 @@ void Player::update()
 
 	// weapon
 	this->weapons[this->currentWeaponIndex]->update();
+
+	if (this->isShooting)
+	{
+		this->weapons[this->currentWeaponIndex]->onClick();
+	}
 
 	// head
 	if (this->statuses[3] == EntityStatus::HEAD_TIRED)
@@ -234,10 +324,28 @@ void Player::update()
 
 	if (this->weapons[this->currentWeaponIndex]->getWeaponType() == Weapon::WeaponType::FIST)
 	{
-		if (this->statuses[1] != EntityStatus::ARMS_MOVING_AHEAD &&
+		// TODO: atac pumn
+		if (this->weapons[this->currentWeaponIndex]->recentlyShot())
+		{
+			updateStatus(EntityStatus::ARMS_USING_FIST, 1);
+		}
+		else if (this->statuses[1] != EntityStatus::ARMS_MOVING_AHEAD &&
 			this->statuses[1] != EntityStatus::ARMS_MOVING_AROUND_WALKING &&
 			this->statuses[1] != EntityStatus::ARMS_MOVING_AROUND_RUNNING)
-				updateStatus(EntityStatus::ARMS_MOVING_AHEAD, 1);
+		{
+			updateStatus(EntityStatus::ARMS_MOVING_AHEAD, 1);
+		}
+	}
+	else if (this->weapons[this->currentWeaponIndex]->getWeaponType() == Weapon::WeaponType::KNIFE)
+	{
+		if (this->weapons[this->currentWeaponIndex]->recentlyShot())
+		{
+			updateStatus(EntityStatus::ARMS_USING_KNIFE, 1);
+		}
+		else
+		{
+			updateStatus(EntityStatus::ARMS_HOLDING_KNIFE, 1);
+		}
 	}
 	else if (this->weapons[this->currentWeaponIndex]->getWeaponType() == Weapon::WeaponType::REVOLVER)
 	{
@@ -257,17 +365,90 @@ void Player::update()
 			updateStatus(EntityStatus::ARMS_RELOADING_PISTOL, 1);
 		}
 	}
-	/*
-	* else if (this->weapons[this->currentWeaponIndex]->getWeaponType() == Weapon::WeaponType::ALTA_ARMA)
-	*/
+	else if (this->weapons[this->currentWeaponIndex]->getWeaponType() == Weapon::WeaponType::SHOTGUN)
+	{
+		if (!this->weapons[this->currentWeaponIndex]->stillReloading())
+		{
+			if (this->weapons[this->currentWeaponIndex]->recentlyShot())
+			{
+				updateStatus(EntityStatus::ARMS_USING_SHOTGUN, 1);
+			}
+			else
+			{
+				updateStatus(EntityStatus::ARMS_HOLDING_SHOTGUN, 1);
+			}
+		}
+		else
+		{
+			updateStatus(EntityStatus::ARMS_RELOADING_SHOTGUN, 1);
+		}
+	}
+	else if (this->weapons[this->currentWeaponIndex]->getWeaponType() == Weapon::WeaponType::AK47)
+	{
+		if (!this->weapons[this->currentWeaponIndex]->stillReloading())
+		{
+			if (this->weapons[this->currentWeaponIndex]->recentlyShot())
+			{
+				updateStatus(EntityStatus::ARMS_USING_AK47, 1);
+			}
+			else
+			{
+				updateStatus(EntityStatus::ARMS_HOLDING_AK47, 1);
+			}
+		}
+		else
+		{
+			updateStatus(EntityStatus::ARMS_RELOADING_AK47, 1);
+		}
+	}
+	else if (this->weapons[this->currentWeaponIndex]->getWeaponType() == Weapon::WeaponType::M4)
+	{
+		if (!this->weapons[this->currentWeaponIndex]->stillReloading())
+		{
+			if (this->weapons[this->currentWeaponIndex]->recentlyShot())
+			{
+				updateStatus(EntityStatus::ARMS_USING_M4, 1);
+			}
+			else
+			{
+				updateStatus(EntityStatus::ARMS_HOLDING_M4, 1);
+			}
+		}
+		else
+		{
+			updateStatus(EntityStatus::ARMS_RELOADING_M4, 1);
+		}
+	}
+	else if (this->weapons[this->currentWeaponIndex]->getWeaponType() == Weapon::WeaponType::GRENADE)
+	{
+		if (!this->weapons[this->currentWeaponIndex]->stillReloading())
+		{
+			if (this->weapons[this->currentWeaponIndex]->recentlyShot())
+			{
+				updateStatus(EntityStatus::ARMS_USING_GRENADE, 1);
+			}
+			else
+			{
+				updateStatus(EntityStatus::ARMS_HOLDING_GRENADE, 1);
+			}
+		}
+		else
+		{
+			//updateStatus(EntityStatus::ARMS_RELOADING_GRENADE, 1);
+			//updateStatus(EntityStatus::ARMS_USING_GRENADE, 1);
+			updateStatus(EntityStatus::ARMS_HOLDING_GRENADE, 1);
+		}
+	}
+	// else if (this->weapons[this->currentWeaponIndex]->getWeaponType() == Weapon::WeaponType::MINIGUN)	// TODO
 
 	// Sound
 	SoundManager::get().pause("walking");
 	SoundManager::get().pause("running");
-	//SoundManager::get().pause("tired");
+	SoundManager::get().pause("tired");
+
 	if (this->isTired)
 	{
-		// TODO: adaugat resume aici pt sound effect tired
+		SoundManager::get().resume("tired");
 	}
 	else if (this->isWalking)
 	{
@@ -281,6 +462,19 @@ void Player::update()
 	if (this->isTired)
 	{
 		return;
+	}
+
+	if (this->statuses[3] != EntityStatus::HEAD_TIRED && !WaveManager::get().getInWave())
+	{
+		updateStatus(EntityStatus::HEAD_SATISFIED, 3);
+	}
+	else if (this->statuses[3] != EntityStatus::HEAD_TIRED && this->weapons[this->currentWeaponIndex]->recentlyShot())
+	{
+		updateStatus(EntityStatus::HEAD_ANGRY, 3);
+	}
+	else if (this->statuses[3] != EntityStatus::HEAD_TIRED)
+	{
+		updateStatus(EntityStatus::HEAD_IDLE, 3);
 	}
 
 	double currentSpeed = this->speed;
@@ -328,6 +522,8 @@ void Player::setupPlayerInputComponent()
 	InputHandler::getPlayerInputComponent().bindAction("RUN", InputEvent::IE_Released, std::bind(&Player::runReleased, this));
 
 	InputHandler::getPlayerInputComponent().bindAction("SHOOT", InputEvent::IE_Pressed, std::bind(&Player::shoot, this));
+	InputHandler::getPlayerInputComponent().bindAction("SHOOT", InputEvent::IE_Released, std::bind(&Player::stopShooting, this));
+
 	InputHandler::getPlayerInputComponent().bindAction("RELOAD", InputEvent::IE_Pressed, std::bind(&Player::reload, this));
 
 	InputHandler::getPlayerInputComponent().bindAxis(std::bind(&Player::look, this, std::placeholders::_1, std::placeholders::_2));
@@ -343,9 +539,12 @@ void Player::setupPlayerInputComponent()
 	InputHandler::getPlayerInputComponent().bindAction("WEAPON_SLOT_4", InputEvent::IE_Pressed, std::bind(&Player::weaponSlot4, this));
 	InputHandler::getPlayerInputComponent().bindAction("WEAPON_SLOT_5", InputEvent::IE_Pressed, std::bind(&Player::weaponSlot5, this));
 	InputHandler::getPlayerInputComponent().bindAction("WEAPON_SLOT_6", InputEvent::IE_Pressed, std::bind(&Player::weaponSlot6, this));
+	InputHandler::getPlayerInputComponent().bindAction("WEAPON_SLOT_7", InputEvent::IE_Pressed, std::bind(&Player::weaponSlot7, this));
 
 	// shop test
-	InputHandler::getPlayerInputComponent().bindAction("SHOP", InputEvent::IE_Pressed, std::bind(&Player::enterShop, this));
+	// InputHandler::getPlayerInputComponent().bindAction("SHOP", InputEvent::IE_Pressed, std::bind(&Player::enterShop, this));
+	InputHandler::getPlayerInputComponent().bindAction("SHOP", InputEvent::IE_Pressed, std::bind(&Player::enterShopButton, this));
+	InputHandler::getPlayerInputComponent().bindAction("SHOP", InputEvent::IE_Released, std::bind(&Player::enterShopButtonReleased, this));
 }
 
 void Player::moveUp()
@@ -411,11 +610,20 @@ void Player::interactReleased()
 void Player::shoot()
 {
 	this->weapons[this->currentWeaponIndex]->onClick();
+
+	if (4 <= currentWeaponIndex && currentWeaponIndex <= 6)
+	{
+		this->isShooting = true;
+	}
+}
+
+void Player::stopShooting()
+{
+	this->isShooting = false;
 }
 
 void Player::reload()
 {
-	std::cout << "RELOAD" << std::endl;
 	this->weapons[this->currentWeaponIndex]->reload();
 }
 
@@ -449,7 +657,9 @@ void Player::look(double xpos, double ypos)
 
 void Player::pauseGame()
 {
+	// std::cout << MenuManager::get().size() << "\n";
 	MenuManager::get().push(PauseMenu::get());
+	// std::cout << MenuManager::get().size() << "\n";
 	// PauseMenu::get().setIsInGame(false);
 	// PauseMenu::get().setupPauseMenuInputComponent();
 	InputHandler::setInputComponent(InputHandler::getMenuInputComponent());
@@ -457,55 +667,99 @@ void Player::pauseGame()
 
 void Player::weaponSlot1()
 {
-	if (this->weapons[0] != nullptr)
+	if (this->hasWeapon[this->weapons[0]->getWeaponType()])
 	{
-		weapons[0]->drawWeapon();
-		this->currentWeaponIndex = 0;
+		this->isShooting = false;
+
+		if (this->weapons[0] != nullptr && this->currentWeaponIndex != 0)
+		{
+			weapons[0]->drawWeapon();
+			this->currentWeaponIndex = 0;
+		}
 	}
 }
 
 void Player::weaponSlot2()
 {
-	if (this->weapons[1] != nullptr)
+	if (this->hasWeapon[this->weapons[1]->getWeaponType()])
 	{
-		weapons[1]->drawWeapon();
-		this->currentWeaponIndex = 1;
+		this->isShooting = false;
+
+		if (this->weapons[1] != nullptr && this->currentWeaponIndex != 1)
+		{
+			weapons[1]->drawWeapon();
+			this->currentWeaponIndex = 1;
+		}
 	}
 }
 
 void Player::weaponSlot3()
 {
-	if (this->weapons[2] != nullptr)
+	if (this->hasWeapon[this->weapons[2]->getWeaponType()])
 	{
-		weapons[2]->drawWeapon();
-		this->currentWeaponIndex = 2;
+		this->isShooting = false;
+
+		if (this->weapons[2] != nullptr && this->currentWeaponIndex != 2)
+		{
+			weapons[2]->drawWeapon();
+			this->currentWeaponIndex = 2;
+		}
 	}
 }
 
 void Player::weaponSlot4()
 {
-	if (this->weapons[3] != nullptr)
+	if (this->hasWeapon[this->weapons[3]->getWeaponType()])
 	{
-		weapons[3]->drawWeapon();
-		this->currentWeaponIndex = 3;
+		this->isShooting = false;
+
+		if (this->weapons[3] != nullptr && this->currentWeaponIndex != 3)
+		{
+			weapons[3]->drawWeapon();
+			this->currentWeaponIndex = 3;
+		}
 	}
 }
 
 void Player::weaponSlot5()
 {
-	if (this->weapons[4] != nullptr)
+	if (this->hasWeapon[this->weapons[4]->getWeaponType()])
 	{
-		weapons[4]->drawWeapon();
-		this->currentWeaponIndex = 4;
+		this->isShooting = false;
+
+		if (this->weapons[4] != nullptr && this->currentWeaponIndex != 4)
+		{
+			weapons[4]->drawWeapon();
+			this->currentWeaponIndex = 4;
+		}
 	}
 }
 
 void Player::weaponSlot6()
 {
-	if (this->weapons[5] != nullptr)
+	if (this->hasWeapon[this->weapons[5]->getWeaponType()])
 	{
-		weapons[5]->drawWeapon();
-		this->currentWeaponIndex = 5;
+		this->isShooting = false;
+
+		if (this->weapons[5] != nullptr && this->currentWeaponIndex != 5)
+		{
+			weapons[5]->drawWeapon();
+			this->currentWeaponIndex = 5;
+		}
+	}
+}
+
+void Player::weaponSlot7()
+{
+	if (this->hasWeapon[this->weapons[6]->getWeaponType()])
+	{
+		this->isShooting = false;
+
+		if (this->weapons[6] != nullptr && this->currentWeaponIndex != 6)
+		{
+			weapons[6]->drawWeapon();
+			this->currentWeaponIndex = 6;
+		}
 	}
 }
 
@@ -522,25 +776,34 @@ void Player::draw()
 		};
 		std::vector<AnimatedEntity::EntityStatus> v0 = { AnimatedEntity::EntityStatus::DEAD_HUMAN };
 
-		Game::get().addDeadBody(std::make_shared<DeadBody>
-			(this->x, this->y, deadResize * this->drawWidth, deadResize * this->drawHeight, deadRotateAngle, 0.0, m0, v0));
+		Game::get().addDeadBody(std::make_shared<DeadBody>(this->x, this->y, deadResize * this->drawWidth, deadResize * this->drawHeight, deadRotateAngle, 0.0, m0, v0, outfitColor));
 
 		// this->setDeleteEntity(true);
+		
+		if (hasDied == false)
+		{
+			MenuManager::get().push(EndScreen::getCenteredEndScreen("You have been killed by zombies"));
+			InputHandler::setInputComponent(InputHandler::getMenuInputComponent());
+		}
+
+		hasDied = true;
 	}
 	else if (this->isWalking)
 	{
 		for (int i = 0; i < this->statuses.size(); ++i)
-			SpriteRenderer::get().draw(ResourceManager::getShader("sprite"), ResourceManager::getFlipbook(this->animationsName2D[this->statuses[i]]).getTextureAtTime(GlobalClock::get().getCurrentTime() - this->timesSinceStatuses[i]), Camera::get().screenPosition(this->x, this->y), Camera::get().screenSize(this->drawWidth + this->walkingOffsetSize * glm::sin(this->walkingOffsetSpeed * GlobalClock::get().getCurrentTime()), this->drawHeight + this->walkingOffsetSize * glm::sin(this->walkingOffsetSpeed * GlobalClock::get().getCurrentTime())), this->rotateAngle);
+			SpriteRenderer::get().draw(ResourceManager::getShader("player"), ResourceManager::getFlipbook(this->animationsName2D[this->statuses[i]]).getTextureAtTime(GlobalClock::get().getCurrentTime() - this->timesSinceStatuses[i]), Camera::get().screenPosition(this->x, this->y), Camera::get().screenSize(this->drawWidth + this->walkingOffsetSize * glm::sin(this->walkingOffsetSpeed * GlobalClock::get().getCurrentTime()), this->drawHeight + this->walkingOffsetSize * glm::sin(this->walkingOffsetSpeed * GlobalClock::get().getCurrentTime())), this->rotateAngle, outfitColor);
 	}
 	else if (this->isRunning)
 	{
 		for (int i = 0; i < this->statuses.size(); ++i)
-			SpriteRenderer::get().draw(ResourceManager::getShader("sprite"), ResourceManager::getFlipbook(this->animationsName2D[this->statuses[i]]).getTextureAtTime(GlobalClock::get().getCurrentTime() - this->timesSinceStatuses[i]), Camera::get().screenPosition(this->x, this->y), Camera::get().screenSize(this->drawWidth + this->runningOffsetSize * glm::sin(this->runningOffsetSpeed * GlobalClock::get().getCurrentTime()), this->drawHeight + this->runningOffsetSize * glm::sin(this->runningOffsetSpeed * GlobalClock::get().getCurrentTime())), this->rotateAngle);
+			SpriteRenderer::get().draw(ResourceManager::getShader("player"), ResourceManager::getFlipbook(this->animationsName2D[this->statuses[i]]).getTextureAtTime(GlobalClock::get().getCurrentTime() - this->timesSinceStatuses[i]), Camera::get().screenPosition(this->x, this->y), Camera::get().screenSize(this->drawWidth + this->runningOffsetSize * glm::sin(this->runningOffsetSpeed * GlobalClock::get().getCurrentTime()), this->drawHeight + this->runningOffsetSize * glm::sin(this->runningOffsetSpeed * GlobalClock::get().getCurrentTime())), this->rotateAngle, outfitColor);
 	}
 	else
 	{
 		for (int i = 0; i < this->statuses.size(); ++i)
-			SpriteRenderer::get().draw(ResourceManager::getShader("sprite"), ResourceManager::getFlipbook(this->animationsName2D[this->statuses[i]]).getTextureAtTime(GlobalClock::get().getCurrentTime() - this->timesSinceStatuses[i]), Camera::get().screenPosition(this->x, this->y), Camera::get().screenSize(this->drawWidth, this->drawHeight), this->rotateAngle);
+		{
+			SpriteRenderer::get().draw(ResourceManager::getShader("player"), ResourceManager::getFlipbook(this->animationsName2D[this->statuses[i]]).getTextureAtTime(GlobalClock::get().getCurrentTime() - this->timesSinceStatuses[i]), Camera::get().screenPosition(this->x, this->y), Camera::get().screenSize(this->drawWidth, this->drawHeight), this->rotateAngle, outfitColor);
+		}
 	}
 }
 
@@ -590,6 +853,15 @@ void Player::load()
 	// TODO
 }
 
+void Player::enterShopButton()
+{
+	this->enterShopUsed = true;
+}
+
+void Player::enterShopButtonReleased()
+{
+	this->enterShopUsed = false;
+}
 
 void Player::enterShop()
 {
